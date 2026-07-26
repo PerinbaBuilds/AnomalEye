@@ -1,4 +1,4 @@
-# 🦅 AnomalEye — Agentic AI for AML Suspicious-Activity Detection
+# 👁 AnomalEye — Agentic AI for AML Suspicious-Activity Detection
 
 AnomalEye is a **full-stack, compliance-grade AML platform**. At its core is an
 **autonomous agent**: you give it an instruction in plain English — *"Find
@@ -106,6 +106,17 @@ python -m anomaleye.data.generate        # (optional) regenerate the dataset
 cd frontend && npm install && npm run build && cd ..
 python -m uvicorn backend.main:app --port 8000   # open http://localhost:8000
 ```
+
+### Deploy
+
+The whole app (API + UI) runs from the single root `Dockerfile`. A `render.yaml`
+blueprint is included for one-click deploys:
+
+```bash
+docker build -t anomaleye . && docker run -p 8000:8000 anomaleye   # local
+```
+
+For Render / Railway / Fly.io steps, see **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 ### CLI (no UI needed)
 

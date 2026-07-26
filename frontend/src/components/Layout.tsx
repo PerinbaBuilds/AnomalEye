@@ -27,15 +27,15 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-line bg-panel/80 backdrop-blur lg:flex">
-        <div className="flex items-center gap-2.5 px-5 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent-soft">
-            <Eye size={20} />
+        <div className="flex items-center gap-3 px-6 pb-6 pt-7">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent/25 to-accent/5 ring-1 ring-accent/30">
+            <Eye size={20} strokeWidth={2.2} className="text-accent-soft" />
           </div>
-          <div>
-            <div className="text-[15px] font-bold tracking-tight text-white">
-              AnomalEye
+          <div className="leading-none">
+            <div className="text-[17px] font-semibold tracking-tight text-white">
+              Anomal<span className="text-accent-soft">Eye</span>
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-muted">
+            <div className="mt-1.5 text-[9.5px] font-medium uppercase tracking-[0.22em] text-muted">
               AML Intelligence
             </div>
           </div>
