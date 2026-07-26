@@ -1,11 +1,12 @@
-# Core analysis stack
+# --- Core detection engine ---
 pandas>=2.0
 numpy>=1.24
 scikit-learn>=1.3
 
-# Optional interactive UI (only needed for `streamlit run app.py`)
-streamlit>=1.30
-plotly>=5.18
+# --- REST backend (FastAPI) ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
 
-# Dev / test
+# --- Dev / test ---
 pytest>=7.4
+httpx>=0.27          # required by fastapi TestClient

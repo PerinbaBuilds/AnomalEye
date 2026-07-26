@@ -116,3 +116,36 @@ suite (`tests/test_agent.py::test_detection_quality_meets_baseline`).
   `_tool_*` handler in the orchestrator.
 - **Real data:** pass `--transactions/--customers`; the loader validates
   required columns and strips any ground-truth columns before detection.
+
+## 8. Full-stack layer
+
+The engine is presented through a two-tier web application.
+
+### Backend (`backend/`)
+
+`FastAPI` wraps the engine. `AnalysisService` (in `backend/service.py`) runs one
+full hybrid-detection pass at startup and caches the findings, assessments and
+scored customer features, so the dashboard, alert queue, entity-360 and network
+views are all served from the same coherent analysis. Free-text agent queries
+are delegated to `Agent`, which re-plans per request. The app also serves the
+built React bundle and falls back to `index.html` for client-side routes, so the
+whole product runs from a single `uvicorn` process. A Server-Sent-Events
+endpoint streams pre-scored transactions to drive the live monitor.
+
+### Frontend (`frontend/`)
+
+`React + TypeScript + Vite + Tailwind`. A thin typed API client (`src/api`)
+mirrors the backend responses (`src/types.ts`); a small `useFetch` hook handles
+loading/error state. Charts use Recharts; the counterparty **link chart** is a
+dependency-free custom SVG with a deterministic radial layout (clearer than a
+physics blob for the funnel/chain shapes AML analysts look for). The design
+system lives in `tailwind.config.js` + `index.css` (bank-grade dark theme, red
+accent). Seven route-level pages under `src/pages` compose the analyst console.
+
+### Data flow
+
+```
+Browser ──REST/SSE──▶ FastAPI ──▶ AnalysisService (cached) ──▶ Engine tools
+   ▲                                     │
+   └───────────── JSON ──────────────────┘
+```

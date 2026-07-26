@@ -1,24 +1,58 @@
 # 🦅 AnomalEye — Agentic AI for AML Suspicious-Activity Detection
 
-AnomalEye is an **autonomous, query-driven agent** for Anti-Money-Laundering
-(AML) compliance. You give it an instruction in plain English — *"Find
+AnomalEye is a **full-stack, compliance-grade AML platform**. At its core is an
+**autonomous agent**: you give it an instruction in plain English — *"Find
 structuring patterns in the last 30 days"* — and it **parses the intent, builds
 a dynamic execution plan, invokes only the tools that query needs**, detects
-laundering typologies, scores risk, and returns an **explainable** verdict with
-a recommended escalation action (`monitor` / `review` / `report`).
+laundering typologies, scores risk, and returns an **explainable** verdict with a
+recommended escalation action (`monitor` / `review` / `report`).
 
-It is built to answer the core problem: rule-based AML systems drown analysts in
-false positives while sophisticated schemes (structuring, smurfing, layering,
-rapid cash-out) slip through. AnomalEye combines **rules + statistics + machine
-learning** into a single hybrid engine whose every decision is auditable.
+It ships as a **React + TypeScript** analyst console on top of a **FastAPI**
+service that exposes a hybrid **rules + statistics + machine-learning** detection
+engine — every decision auditable, every threshold explicit.
+
+> Built to attack the real problem: rule-based AML systems drown analysts in
+> false positives while sophisticated schemes (structuring, smurfing, layering,
+> rapid cash-out) slip through.
 
 ---
 
-## Why this is an *agent*, not a pipeline
+## What's inside
 
-The agent does **not** run a fixed sequence. It reads the query, extracts
-intent / filters / entities / target typology, and **constructs a plan on the
-fly** — running only the necessary tools on the necessary slice of data:
+```
+┌──────────────────────────── Frontend (React + TS + Vite + Tailwind) ────────────────────────────┐
+│  Dashboard · AI Agent Console · Alert Queue · Live Monitor · Link Analysis · Performance · Docs   │
+└───────────────────────────────────────────────┬──────────────────────────────────────────────────┘
+                                                 │  REST / SSE
+┌───────────────────────────────────────────────▼──────────────────────────────────────────────────┐
+│  Backend (FastAPI)   /api/overview · /api/agent/query · /api/alerts · /api/customers/{id} ...      │
+└───────────────────────────────────────────────┬──────────────────────────────────────────────────┘
+                                                 │
+┌───────────────────────────────────────────────▼──────────────────────────────────────────────────┐
+│  Engine (Python)   Agent(planner + orchestrator)  →  EDA · Features · Anomaly · Risk · Explain     │
+└────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Six analyst views
+
+| View | What it does |
+|---|---|
+| **Dashboard** | Portfolio KPIs, risk distribution, typology breakdown, CTR-band histogram, flagged-activity trend, priority cases |
+| **AI Agent Console** | The hero: type a query → see the agent's detected intent, filters, **tool pipeline**, planning rationale, and explained findings |
+| **Alert Queue** | Case triage — filter by risk band / action / typology, paginate, drill into any entity |
+| **Live Monitor** | Real-time transaction blotter scored on the fly over **Server-Sent Events** |
+| **Link Analysis** | Counterparty network graphs (funnel = smurfing, chain = layering) + discovered layering chains |
+| **Entity 360** | Per-customer risk gauge, plain-English explanation, evidence, network, full transaction history |
+| **Model Performance** | Precision / recall / F1 and per-typology recall vs injected ground truth |
+| **Methodology** | Every rule, weight and threshold — the auditable rulebook |
+
+---
+
+## Why it's an *agent*, not a pipeline
+
+The agent reads the query, extracts intent / filters / entities / typology, and
+**constructs a plan on the fly** — running only the necessary tools on the
+necessary slice of data:
 
 | User query | What the agent decides to do |
 |---|---|
@@ -27,40 +61,59 @@ fly** — running only the necessary tools on the necessary slice of data:
 | `Which customers made 10+ transactions under $10,000?` | Pure aggregation rule; **no ML** |
 | `Is customer ID 1528 suspicious?` | Single-entity lookup; risk computed on-demand for **that customer only** |
 | `Flag high-risk customers` | Full hybrid suite, return **only** the high-risk band |
-| `Give me an overview of the data` | EDA / profiling only |
 
-You can see the plan the agent chose in every result under
-`execution_summary.tools_invoked` and `planning_rationale`.
+The chosen plan is shown in every response under `tools_invoked` and
+`planning_rationale`.
 
 ---
 
-## Architecture
+## Quick start
 
-```
-                    ┌─────────────────────────────────────────────┐
-   "Find            │                 AGENT                        │
-    structuring  ──▶│  Planner  →  Orchestrator                    │
-    last 30 days"   │  (intent,     (dynamic plan, selective       │
-                    │   filters,     tool invocation)              │
-                    │   entities)          │                       │
-                    └──────────────────────┼───────────────────────┘
-                                           ▼
-       ┌───────────┬────────────┬─────────────────┬───────────┬────────────┐
-       │  EDA Tool │  Feature   │  Anomaly        │  Risk     │  Explain   │
-       │  profiling│  Engineering│  Detection      │  Classify │  Layer     │
-       │           │  (AML feats)│  rules+stats+ML │  score→band│  NL reasons│
-       └───────────┴────────────┴─────────────────┴───────────┴────────────┘
+**Prerequisites:** Python 3.10+ and Node 18+.
+
+### One command (production build + serve)
+
+```bash
+# Windows
+scripts\start.bat
+
+# macOS / Linux
+./scripts/start.sh
 ```
 
-| Component | Module | Responsibility |
-|---|---|---|
-| **Planner** | `anomaleye/agent/planner.py` | NL → intent, filters, entities, typologies, tool plan |
-| **Orchestrator** | `anomaleye/agent/orchestrator.py` | Executes the plan, invokes only needed tools, assembles output |
-| **EDA Tool** | `anomaleye/tools/eda.py` | Profiling, amount distribution, CTR-band concentration |
-| **Feature Engineering** | `anomaleye/tools/features.py` | Rolling sums, velocity, amount deviation, CTR proximity, counterparty concentration |
-| **Anomaly Detection** | `anomaleye/tools/anomaly.py` | Rule typology detectors + Isolation Forest (hybrid) |
-| **Risk Classification** | `anomaleye/tools/risk.py` | Weighted blend → low/medium/high → escalation |
-| **Explanation Layer** | `anomaleye/tools/explain.py` | Deterministic, evidence-quoting natural-language reasons |
+This installs deps, builds the React app, and serves the whole product (UI +
+API) from FastAPI at **http://localhost:8000**.
+
+### Development (hot reload)
+
+```bash
+# Windows
+scripts\dev.bat
+
+# macOS / Linux
+./scripts/dev.sh
+```
+
+Backend on `:8000`, Vite dev server with hot reload on **http://localhost:5173**
+(it proxies `/api` to the backend).
+
+### Manual
+
+```bash
+pip install -r requirements.txt          # Python deps
+python -m anomaleye.data.generate        # (optional) regenerate the dataset
+
+cd frontend && npm install && npm run build && cd ..
+python -m uvicorn backend.main:app --port 8000   # open http://localhost:8000
+```
+
+### CLI (no UI needed)
+
+```bash
+python -m anomaleye "Analyse this dataset for suspicious activity"
+python -m anomaleye --demo            # run all example queries
+python -m anomaleye.evaluate          # detection quality metrics
+```
 
 ---
 
@@ -68,28 +121,21 @@ You can see the plan the agent chose in every result under
 
 **Rule + statistical typology detectors** (each emits structured *evidence*):
 
-- **Structuring** — ≥3 cash transactions in the `$9,000–$9,999` band within 30
-  days (staying under the `$10,000` CTR reporting line).
-- **Smurfing** — ≥6 distinct counterparties sending *small* inbound transfers
-  that aggregate above `$10,000` within 7 days (funnel account).
-- **Rapid cash-out** — a large credit ≥80% drained by withdrawals within 72h
-  (placement → removal).
-- **Layering** — value bounced through ≥3 accounts in ≤48h with near-constant
-  amounts; **every account in the chain is flagged**.
-- **Velocity spike** — 24h transaction burst that is a ≥3σ population outlier.
-- **High-risk geography** — exposure to FATF-flagged jurisdictions (amplifier).
+- **Structuring** — ≥3 cash transactions in `$9,000–$9,999` within 30 days.
+- **Smurfing** — ≥6 distinct small senders aggregating above `$10,000` in 7 days.
+- **Rapid cash-out** — a large credit ≥80% drained within 72h.
+- **Layering** — value through ≥3 accounts in ≤48h; every account flagged.
+- **Velocity spike** — 24h burst ≥3σ over the population.
+- **High-risk geography** — FATF-flagged jurisdiction exposure (amplifier).
 
 **Machine learning:** an unsupervised **Isolation Forest** over a 13-dimensional
-per-customer behavioural fingerprint catches anomalies the rules don't encode.
+per-customer behavioural fingerprint.
 
 **Risk score:** an auditable weighted blend of the strongest signal per type,
 capped at 100, mapped to `low < 40 ≤ medium < 70 ≤ high`. All weights and
-thresholds live in one file — `anomaleye/config.py`.
+thresholds live in `anomaleye/config.py`.
 
-### Measured performance
-
-Because the synthetic generator labels every injected laundering transaction,
-detection quality is measured honestly (`python -m anomaleye.evaluate`):
+### Measured performance (`python -m anomaleye.evaluate`)
 
 | Metric (customer-level, ≥ medium risk) | Value |
 |---|---|
@@ -102,113 +148,39 @@ Per-typology recall: structuring **1.0**, smurfing **1.0**, rapid cash-out
 
 ---
 
-## Quick start
+## API reference (selected)
 
-```bash
-# 1. Install
-pip install -r requirements.txt
+| Method | Path | Purpose |
+|---|---|---|
+| `GET`  | `/api/overview` | Dashboard KPIs, distributions, histogram |
+| `POST` | `/api/agent/query` | Run a natural-language agent query |
+| `GET`  | `/api/alerts?level=&typology=&escalation=` | Filtered alert queue |
+| `GET`  | `/api/customers/{id}` | Entity 360 (profile, assessment, timeline, network) |
+| `GET`  | `/api/customers/{id}/network` | Counterparty link graph |
+| `GET`  | `/api/layering-chains` | Discovered layering paths |
+| `GET`  | `/api/performance` | Precision/recall vs ground truth |
+| `GET`  | `/api/methodology` | Thresholds, weights, risk bands |
+| `GET`  | `/api/stream/transactions` | SSE live scoring feed |
 
-# 2. Generate the synthetic dataset (auto-runs on first use anyway)
-python -m anomaleye.data.generate
-
-# 3. Ask the agent something (CLI)
-python -m anomaleye "Analyse this dataset for suspicious activity"
-python -m anomaleye "Find structuring patterns in the last 30 days"
-python -m anomaleye "Is customer ID 1528 suspicious?"
-
-# Run all the example queries at once
-python -m anomaleye --demo
-
-# Machine-readable output
-python -m anomaleye "Flag high-risk customers" --json
-
-# 4. Interactive dashboard
-streamlit run app.py
-```
-
-### Example CLI output
-
-```
-▸ Execution plan (what the agent decided)
-    intent            : single_entity
-    customer          : 1528
-    tools invoked     : filter -> features -> detect_typologies -> classify -> explain
-    transactions used : 47
-
-▸ Top flagged entities
-  [MEDIUM] Customer 1528 — score 48.8/100 — action: REVIEW
-      • Made 8 cash transactions between $9,000 and $10,000 within 30 days
-        (total $76,910.13) — consistent with structuring to stay under the
-        $10,000 CTR reporting line.
-      • A credit of $111,024.41 was 94% drained ($104,500.90) within 72 hours
-        — placement followed by rapid removal of funds.
-      → Route to a compliance analyst for manual review before any filing decision.
-```
-
----
-
-## Output format
-
-Every run returns a structured, judge-friendly result:
-
-```jsonc
-{
-  "execution_summary": {
-    "user_query": "...",
-    "detected_intent": "find_pattern",
-    "detected_filters": { "date_from": "...", "date_to": "..." },
-    "detected_typologies": ["structuring"],
-    "tools_invoked": ["filter", "features", "detect_typologies", "classify", "explain"],
-    "planning_rationale": ["Detected a pattern-specific query ..."],
-    "transactions_in_scope": 9924
-  },
-  "flagged_entities": [
-    { "customer_id": 1070, "risk_score": 45.0, "risk_level": "medium",
-      "escalation": "review", "typologies": ["structuring"],
-      "score_breakdown": { "structuring": 30.0 } }
-  ],
-  "explanations": [ { "summary": "...", "reasons": ["..."],
-                      "escalation_rationale": "..." } ],
-  "counts": { "total_flagged": 3, "high": 0, "medium": 3, "low": 0 }
-}
-```
-
----
-
-## Using your own data
-
-Point the loader at your CSVs:
-
-```bash
-python -m anomaleye "Flag high-risk customers" \
-    --transactions path/to/transactions.csv \
-    --customers path/to/customers.csv
-```
-
-**Required transaction columns:** `transaction_id, customer_id, timestamp,
-amount, type`. Optional but recommended: `channel, counterparty_id,
-counterparty_country`. Any `is_laundering` / `typology` columns are treated as
-held-out ground truth and never shown to the detectors.
+Interactive docs at **http://localhost:8000/docs** when the server is running.
 
 ---
 
 ## Project layout
 
 ```
-anomaleye/
-├── config.py              # all thresholds & weights (single source of truth)
-├── cli.py                 # command-line interface
-├── evaluate.py            # precision/recall vs injected ground truth
-├── data/
-│   ├── generate.py        # synthetic dataset w/ injected typologies
-│   └── loader.py          # validation + ground-truth separation
-├── agent/
-│   ├── planner.py         # NL → execution plan
-│   └── orchestrator.py    # dynamic tool invocation
-└── tools/
-    ├── eda.py  features.py  anomaly.py  risk.py  explain.py
-app.py                     # Streamlit dashboard
-tests/                     # 27 tests (planner, detectors, agent, eval quality)
+anomaleye/            # detection engine (importable, tested)
+  config.py           # all thresholds & weights (single source of truth)
+  agent/              # planner (NL→plan) + orchestrator (dynamic execution)
+  tools/              # eda · features · anomaly · risk · explain · network
+  data/               # synthetic generator + loader
+  cli.py  evaluate.py
+backend/              # FastAPI app + cached analysis service
+frontend/             # React + TS + Vite + Tailwind console
+  src/pages/          # Dashboard, AgentConsole, Alerts, Entity360, ...
+  src/components/     # Layout, NetworkGraph, ScoreGauge, ui primitives
+scripts/              # start / dev launchers (Windows + Unix)
+tests/                # 36 tests: planner, detectors, agent, API, eval gate
 ```
 
 ---
@@ -216,22 +188,19 @@ tests/                     # 27 tests (planner, detectors, agent, eval quality)
 ## Tests
 
 ```bash
-python -m pytest
+python -m pytest                 # 36 backend/engine tests
+cd frontend && npm run typecheck # frontend type safety
 ```
-
-27 tests cover query planning, each typology detector, risk banding /
-escalation, end-to-end agent behaviour, and a detection-quality regression
-gate.
 
 ---
 
 ## Design principles
 
-- **Explainable by construction** — no black-box scoring; every flag quotes the
-  exact numbers that triggered it, and the risk score breaks down by signal.
-- **Auditable thresholds** — all business logic in `config.py`, each constant
-  documented with its regulatory rationale.
-- **Deterministic & offline** — no external API key required; the same query
-  always yields the same, reproducible plan and verdict.
-- **Ground-truth honest** — the generator labels its injected schemes so
+- **Explainable by construction** — every flag quotes the exact numbers that
+  triggered it; the risk score breaks down by signal.
+- **Auditable** — all business logic in `config.py`, surfaced in the Methodology
+  view.
+- **Deterministic & offline** — no external API key; the same query always
+  yields the same plan and verdict.
+- **Ground-truth honest** — the generator labels its injected schemes, so
   detection quality is measured, not asserted.

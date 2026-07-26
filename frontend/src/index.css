@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-900 text-slate-200 font-sans antialiased;
+  background-image:
+    radial-gradient(900px 500px at 100% -10%, rgba(230, 0, 40, 0.08), transparent 60%),
+    radial-gradient(700px 500px at -10% 110%, rgba(40, 80, 200, 0.06), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Thin, unobtrusive scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  @apply bg-ink-500 rounded-full;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .card {
+    @apply bg-panel border border-line rounded-xl shadow-card;
+  }
+  .card-hover {
+    @apply transition-colors hover:border-ink-400;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors;
+  }
+  .btn-accent {
+    @apply btn bg-accent text-white hover:bg-accent-soft;
+  }
+  .btn-ghost {
+    @apply btn border border-line text-slate-300 hover:bg-ink-600;
+  }
+  .input {
+    @apply w-full rounded-lg bg-ink-800 border border-line px-3.5 py-2.5 text-sm
+      text-slate-100 placeholder:text-muted focus:outline-none focus:border-accent/70
+      focus:ring-2 focus:ring-accent/20;
+  }
+  .label {
+    @apply text-xs uppercase tracking-wider text-muted font-medium;
+  }
+  .table-head {
+    @apply text-left text-xs uppercase tracking-wider text-muted font-medium;
+  }
+}
+
+.grid-fade-in {
+  animation: fadeIn 0.35s ease both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.blink {
+  animation: blink 1.1s ease-in-out infinite;
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
