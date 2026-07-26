@@ -65,6 +65,29 @@ def timeline(freq: str = "W") -> list:
     return get_service().alerts_timeline(freq=freq)
 
 
+@app.get("/api/customer-breakdown")
+def customer_breakdown() -> dict:
+    return get_service().customer_breakdown()
+
+
+@app.get("/api/dataset.xlsx")
+def dataset_excel():
+    """Download the full synthetic dataset as an Excel workbook."""
+    from anomaleye.config import DATA_DIR
+    from anomaleye.data.export_excel import build_workbook
+
+    path = DATA_DIR / "anomaleye_dataset.xlsx"
+    if not path.exists():
+        build_workbook(output=path)
+    return FileResponse(
+        str(path),
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        filename="anomaleye_dataset.xlsx",
+    )
+
+
 @app.get("/api/alerts")
 def alerts(
     level: str | None = None,

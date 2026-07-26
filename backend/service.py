@@ -45,9 +45,12 @@ class AnalysisService:
             txns = self.dataset.transactions
             cf = features.customer_features(txns)
             findings: list[dict] = []
-            for det in anomaly.TYPOLOGY_DETECTORS.values():
-                findings.extend(det(txns))
-            findings.extend(anomaly.detect_velocity(cf))
+            det_by_typ: dict[str, list] = {}
+            for typ, det in anomaly.TYPOLOGY_DETECTORS.items():
+                det_by_typ[typ] = det(txns)
+                findings.extend(det_by_typ[typ])
+            velocity = anomaly.detect_velocity(cf)
+            findings.extend(velocity)
             scored, ml_findings = anomaly.ml_anomaly(cf)
             findings.extend(ml_findings)
 
@@ -56,6 +59,17 @@ class AnalysisService:
             self._assessments = risk.classify_all(findings)
             self._assess_by_id = {a.customer_id: a for a in self._assessments}
             self._flagged_ids = {a.customer_id for a in self._assessments}
+
+            # Warm the agent's full-scope cache so the first broad NL query is
+            # instant (it reuses this analysis instead of recomputing).
+            self.agent._cache.update(
+                {
+                    "features": cf,
+                    "ml": (scored, ml_findings),
+                    "velocity": velocity,
+                    **{f"det_{typ}": v for typ, v in det_by_typ.items()},
+                }
+            )
             self._built = True
 
     # -- dashboard -------------------------------------------------------
@@ -92,6 +106,74 @@ class AnalysisService:
             "amount_histogram": scan["histogram"],
             "alerts_total": len(self._assessments),
             "sar_recommended": escalations["report"],
+        }
+
+    def customer_breakdown(self) -> dict[str, Any]:
+        """Customer- and transaction-level segmentation for the dashboard."""
+        txns = self.dataset.transactions
+        cust = self.dataset.customers
+        T = SETTINGS.thresholds
+
+        # Transaction bands around the CTR reporting line.
+        amt = txns["amount"]
+        tx_bands = {
+            "above_ctr": int((amt >= T.ctr_threshold).sum()),
+            "ctr_band": int(
+                ((amt >= T.structuring_band_low) & (amt < T.ctr_threshold)).sum()
+            ),
+            "below_band": int((amt < T.structuring_band_low).sum()),
+        }
+
+        # Customer-level flags.
+        per_cust = txns.groupby("customer_id")["amount"]
+        cust_over_10k = per_cust.max()
+        n_over_10k = int((cust_over_10k >= T.ctr_threshold).sum())
+        in_band = txns[
+            (amt >= T.structuring_band_low) & (amt < T.ctr_threshold)
+        ]["customer_id"].nunique()
+
+        hr_geo_customers = 0
+        if "counterparty_country" in txns:
+            from anomaleye.config import HIGH_RISK_COUNTRIES
+
+            hr = txns[
+                txns["counterparty_country"].str.upper().isin(HIGH_RISK_COUNTRIES)
+            ]
+            hr_geo_customers = int(hr["customer_id"].nunique())
+
+        by_segment = (
+            cust["segment"].value_counts().to_dict()
+            if "segment" in cust
+            else {}
+        )
+        by_kyc = (
+            cust["kyc_risk_rating"].value_counts().to_dict()
+            if "kyc_risk_rating" in cust
+            else {}
+        )
+        flagged_ids = self._flagged_ids
+        by_segment_flagged = {}
+        if "segment" in cust:
+            seg_of = dict(zip(cust["customer_id"], cust["segment"]))
+            for cid in flagged_ids:
+                s = seg_of.get(cid, "unknown")
+                by_segment_flagged[s] = by_segment_flagged.get(s, 0) + 1
+
+        total = int(cust["customer_id"].nunique())
+        return {
+            "total_customers": total,
+            "flagged_customers": len(flagged_ids),
+            "customers_over_ctr": n_over_10k,
+            "customers_in_ctr_band": int(in_band),
+            "high_risk_geo_customers": hr_geo_customers,
+            "avg_txns_per_customer": round(len(txns) / max(total, 1), 1),
+            "transaction_bands": tx_bands,
+            "by_segment": {str(k): int(v) for k, v in by_segment.items()},
+            "by_kyc": {str(k): int(v) for k, v in by_kyc.items()},
+            "flagged_by_segment": {
+                str(k): int(v) for k, v in by_segment_flagged.items()
+            },
+            "ctr_threshold": T.ctr_threshold,
         }
 
     def alerts_timeline(self, freq: str = "W") -> list[dict[str, Any]]:
@@ -251,32 +333,61 @@ class AnalysisService:
         }
 
     # -- live feed helper ------------------------------------------------
-    def sample_transaction_stream(self, n: int = 200) -> list[dict[str, Any]]:
-        """A shuffled slice of transactions for the live-monitor simulation,
-        each pre-scored so the UI can animate real-time triage."""
+    def sample_transaction_stream(self, n: int = 250) -> list[dict[str, Any]]:
+        """A pre-scored, shuffled stream for the live-monitor simulation.
+
+        Suspicious transactions are only ~0.5% of the data, so a naive random
+        sample would show almost nothing but LOW. Instead we deliberately mix a
+        healthy share of the actually-flagged transactions (carrying their
+        entity's risk band) with normal traffic, so the blotter reads like a
+        real triage feed with a believable high/medium/low spread.
+        """
+        import numpy as np
+
         txns = self.dataset.transactions
-        flagged_txn = set()
-        for f in self._findings:
-            flagged_txn.update(f.get("transaction_ids", []))
-        sample = txns.sample(min(n, len(txns)),
-                             random_state=SETTINGS.random_seed).copy()
-        sample["timestamp"] = pd.to_datetime(sample["timestamp"])
+        # Map each flagged transaction to its entity's risk band.
+        susp_level: dict[int, str] = {}
+        for a in self._assessments:
+            if a.risk_level == "low":
+                continue
+            for f in a.findings:
+                for tid in f.get("transaction_ids", []):
+                    prev = susp_level.get(int(tid))
+                    if prev != "high":  # keep the strongest band
+                        susp_level[int(tid)] = a.risk_level
+        susp_ids = list(susp_level.keys())
+
+        rng = np.random.default_rng(SETTINGS.random_seed)
+        # ~40% of the feed is suspicious for a meaningful demo.
+        n_susp = min(len(susp_ids), int(n * 0.4))
+        n_normal = n - n_susp
+        chosen_susp = set(
+            rng.choice(susp_ids, n_susp, replace=False).tolist()
+        ) if susp_ids else set()
+
+        normal_pool = txns[~txns["transaction_id"].isin(susp_level)]
+        normal_sample = normal_pool.sample(
+            min(n_normal, len(normal_pool)), random_state=SETTINGS.random_seed
+        )
+        susp_sample = txns[txns["transaction_id"].isin(chosen_susp)]
+
+        combined = pd.concat([normal_sample, susp_sample]).sample(
+            frac=1.0, random_state=SETTINGS.random_seed
+        )
+
         out = []
-        for _, r in sample.iterrows():
+        for _, r in combined.iterrows():
             tid = int(r["transaction_id"])
-            cid = int(r["customer_id"])
-            a = self._assess_by_id.get(cid)
-            level = a.risk_level if (a and tid in self._flagged_txn_ids(cid)) else (
-                "medium" if tid in flagged_txn else "low")
+            level = susp_level.get(tid, "low")
             out.append(
                 {
                     "transaction_id": tid,
-                    "customer_id": cid,
+                    "customer_id": int(r["customer_id"]),
                     "amount": round(float(r["amount"]), 2),
                     "type": str(r["type"]),
                     "counterparty_country": str(r.get("counterparty_country", "")),
                     "risk_level": level,
-                    "suspicious": tid in flagged_txn,
+                    "suspicious": tid in susp_level,
                 }
             )
         return out

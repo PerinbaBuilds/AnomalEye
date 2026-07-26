@@ -50,6 +50,12 @@ class Agent:
         self.use_llm = (
             llm_planner.llm_enabled() if use_llm is None else use_llm
         )
+        self._n_full = len(self.dataset.transactions)
+        # Cache of full-dataset artifacts so repeated broad queries don't
+        # recompute rolling features / Isolation Forest every time. The backend
+        # warms this at startup (see AnalysisService), so the first agent query
+        # is already fast. Filtered scopes are small and computed on demand.
+        self._cache: dict[str, Any] = {}
 
     # -- public API -------------------------------------------------------
     def run(self, query: str) -> dict[str, Any]:
@@ -121,18 +127,36 @@ class Agent:
             "structuring_scan": eda.structuring_scan(ctx["scope"]),
         }
 
+    def _is_full_scope(self, ctx: dict) -> bool:
+        return len(ctx["scope"]) == self._n_full
+
     def _tool_features(self, plan: QueryPlan, ctx: dict) -> None:
-        ctx["customer_features"] = features.customer_features(ctx["scope"])
+        if self._is_full_scope(ctx):
+            if "features" not in self._cache:
+                self._cache["features"] = features.customer_features(
+                    ctx["scope"]
+                )
+            ctx["customer_features"] = self._cache["features"]
+        else:
+            ctx["customer_features"] = features.customer_features(ctx["scope"])
 
     def _tool_detect_typologies(self, plan: QueryPlan, ctx: dict) -> None:
         scope = ctx["scope"]
         findings = ctx.setdefault("findings", [])
+        full = self._is_full_scope(ctx)
         # Choose detectors: those named in the query, else the full rule suite.
         wanted = plan.typologies or list(anomaly.TYPOLOGY_DETECTORS.keys())
 
         for typ in wanted:
             det = anomaly.TYPOLOGY_DETECTORS.get(typ)
-            if det is not None:
+            if det is None:
+                continue
+            if full:
+                key = f"det_{typ}"
+                if key not in self._cache:
+                    self._cache[key] = det(scope)
+                findings.extend(list(self._cache[key]))
+            else:
                 findings.extend(det(scope))
 
         # Velocity needs the customer feature frame.
@@ -141,16 +165,28 @@ class Agent:
             if feats is None:
                 feats = features.customer_features(scope)
                 ctx["customer_features"] = feats
-            findings.extend(anomaly.detect_velocity(feats))
+            if full:
+                if "velocity" not in self._cache:
+                    self._cache["velocity"] = anomaly.detect_velocity(feats)
+                findings.extend(list(self._cache["velocity"]))
+            else:
+                findings.extend(anomaly.detect_velocity(feats))
 
     def _tool_ml_anomaly(self, plan: QueryPlan, ctx: dict) -> None:
         feats = ctx.get("customer_features")
         if feats is None:
             feats = features.customer_features(ctx["scope"])
             ctx["customer_features"] = feats
-        scored, ml_findings = anomaly.ml_anomaly(feats)
-        ctx["customer_features"] = scored
-        ctx.setdefault("findings", []).extend(ml_findings)
+        if self._is_full_scope(ctx):
+            if "ml" not in self._cache:
+                self._cache["ml"] = anomaly.ml_anomaly(feats)
+            scored, ml_findings = self._cache["ml"]
+            ctx["customer_features"] = scored
+            ctx.setdefault("findings", []).extend(list(ml_findings))
+        else:
+            scored, ml_findings = anomaly.ml_anomaly(feats)
+            ctx["customer_features"] = scored
+            ctx.setdefault("findings", []).extend(ml_findings)
 
     def _tool_aggregate_threshold(self, plan: QueryPlan, ctx: dict) -> None:
         """Pure aggregation rule for threshold questions."""

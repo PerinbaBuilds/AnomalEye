@@ -15,8 +15,13 @@ import {
 import {
   AlertTriangle,
   ArrowRight,
+  Building2,
+  DollarSign,
+  Download,
   FileWarning,
+  Globe2,
   Layers,
+  Receipt,
   Users,
 } from "lucide-react";
 import { api } from "../api/client";
@@ -40,6 +45,7 @@ import type { RiskLevel } from "../types";
 
 export default function Dashboard() {
   const ov = useFetch(() => api.overview(), []);
+  const bd = useFetch(() => api.breakdown(), []);
   const tl = useFetch(() => api.timeline("W"), []);
   const al = useFetch(() => api.alerts({ level: "high", limit: 6 }), []);
   const alHigh = useFetch(
@@ -124,6 +130,9 @@ export default function Dashboard() {
           icon={<Users size={16} />}
         />
       </div>
+
+      {/* Customer + transaction breakdown */}
+      {bd.data && <BreakdownSection data={bd.data} />}
 
       {/* charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -345,6 +354,271 @@ export default function Dashboard() {
           </table>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function BreakdownSection({ data }: { data: any }) {
+  const totalTx =
+    data.transaction_bands.above_ctr +
+    data.transaction_bands.ctr_band +
+    data.transaction_bands.below_band;
+  const pct = (n: number) => `${((n / totalTx) * 100).toFixed(2)}%`;
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">
+            Portfolio breakdown
+          </h2>
+          <p className="mt-0.5 text-xs text-muted">
+            customer and transaction segmentation across the compliance-relevant
+            bands
+          </p>
+        </div>
+        <a
+          href="/api/dataset.xlsx"
+          className="btn-ghost text-xs"
+          download
+        >
+          <Download size={14} /> Download dataset (Excel)
+        </a>
+      </div>
+
+      {/* Customer stat row */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Total Customers"
+          value={fmtNum(data.total_customers)}
+          sub={`${fmtNum(data.avg_txns_per_customer, true)} avg txns each`}
+          icon={<Users size={16} />}
+        />
+        <StatCard
+          label="Flagged Customers"
+          value={fmtNum(data.flagged_customers)}
+          sub={fmtPct(data.flagged_customers / data.total_customers, 1) +
+            " of portfolio"}
+          accent="accent"
+          icon={<AlertTriangle size={16} />}
+        />
+        <StatCard
+          label="Above CTR line"
+          value={fmtNum(data.customers_over_ctr)}
+          sub={`have transactions ≥ ${fmtMoney(data.ctr_threshold, true)}`}
+          accent="medium"
+          icon={<DollarSign size={16} />}
+        />
+        <StatCard
+          label="High-risk jurisdictions"
+          value={fmtNum(data.high_risk_geo_customers)}
+          sub="FATF-flagged counterparties"
+          accent="high"
+          icon={<Globe2 size={16} />}
+        />
+      </div>
+
+      {/* Transaction bands */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card
+          title="Transactions by amount band"
+          subtitle="regulatory reporting perspective"
+          className="lg:col-span-2"
+        >
+          <div className="space-y-3">
+            <BandRow
+              label="Above CTR reporting line"
+              hint={`amount ≥ ${fmtMoney(data.ctr_threshold, true)}`}
+              value={data.transaction_bands.above_ctr}
+              share={data.transaction_bands.above_ctr / totalTx}
+              color="#3b82f6"
+              tag="Reportable"
+            />
+            <BandRow
+              label="CTR structuring band"
+              hint={`${fmtMoney(9000, true)} – ${fmtMoney(data.ctr_threshold, true)}`}
+              value={data.transaction_bands.ctr_band}
+              share={data.transaction_bands.ctr_band / totalTx}
+              color="#e60028"
+              tag="High risk"
+              highlight
+            />
+            <BandRow
+              label="Below the band"
+              hint={`amount < ${fmtMoney(9000, true)}`}
+              value={data.transaction_bands.below_band}
+              share={data.transaction_bands.below_band / totalTx}
+              color="#22c55e"
+              tag="Normal"
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-4 rounded-lg border border-line bg-ink-800/40 p-3 text-xs">
+            <Metric
+              label="Customers in CTR band"
+              value={fmtNum(data.customers_in_ctr_band)}
+              icon={<Receipt size={14} />}
+            />
+            <Metric
+              label="Total transactions"
+              value={fmtNum(totalTx)}
+              icon={<Receipt size={14} />}
+            />
+            <Metric
+              label="Above-CTR share"
+              value={pct(data.transaction_bands.above_ctr)}
+              icon={<DollarSign size={14} />}
+            />
+          </div>
+        </Card>
+
+        <Card
+          title="Customer segments"
+          subtitle="business relationship breakdown"
+        >
+          <div className="space-y-2.5">
+            {Object.entries(data.by_segment)
+              .sort((a: any, b: any) => b[1] - a[1])
+              .map(([seg, count]: any) => {
+                const share = count / data.total_customers;
+                const flagged = data.flagged_by_segment?.[seg] ?? 0;
+                return (
+                  <div
+                    key={seg}
+                    className="rounded-lg border border-line bg-ink-800/40 p-2.5"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5 capitalize text-slate-200">
+                        <Building2 size={12} className="text-muted" />
+                        {seg.replace("_", " ")}
+                      </span>
+                      <span className="font-mono text-slate-300">
+                        {fmtNum(count)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-ink-600">
+                      <div
+                        className="h-full rounded-full bg-accent/70"
+                        style={{ width: `${share * 100}%` }}
+                      />
+                    </div>
+                    {flagged > 0 && (
+                      <div className="mt-1 text-[10px] text-accent-soft">
+                        {flagged} flagged ({((flagged / count) * 100).toFixed(0)}
+                        %)
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+
+          {Object.keys(data.by_kyc).length > 0 && (
+            <div className="mt-4 border-t border-line pt-3">
+              <span className="label">KYC risk rating</span>
+              <div className="mt-2 flex gap-2">
+                {Object.entries(data.by_kyc).map(([lvl, n]: any) => (
+                  <span
+                    key={lvl}
+                    className={`pill flex-1 justify-center ${
+                      lvl === "high"
+                        ? "bg-risk-high/15 text-risk-high"
+                        : lvl === "medium"
+                          ? "bg-risk-medium/15 text-risk-medium"
+                          : "bg-risk-low/15 text-risk-low"
+                    }`}
+                  >
+                    {lvl}: {n}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+function BandRow({
+  label,
+  hint,
+  value,
+  share,
+  color,
+  tag,
+  highlight,
+}: {
+  label: string;
+  hint: string;
+  value: number;
+  share: number;
+  color: string;
+  tag: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        highlight
+          ? "border-accent/40 bg-accent/8"
+          : "border-line bg-ink-800/40"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-100">{label}</span>
+            <span
+              className="pill text-[10px]"
+              style={{
+                backgroundColor: `${color}22`,
+                color,
+                border: `1px solid ${color}55`,
+              }}
+            >
+              {tag}
+            </span>
+          </div>
+          <div className="mt-0.5 text-[11px] text-muted">{hint}</div>
+        </div>
+        <div className="text-right">
+          <div className="font-mono text-lg font-semibold text-slate-100">
+            {fmtNum(value)}
+          </div>
+          <div className="text-[11px] text-muted">
+            {(share * 100).toFixed(2)}%
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 h-1.5 rounded-full bg-ink-600">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${share * 100}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-muted">{icon}</span>
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-muted">
+          {label}
+        </div>
+        <div className="text-sm font-semibold text-slate-100">{value}</div>
+      </div>
     </div>
   );
 }

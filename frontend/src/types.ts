@@ -27,6 +27,24 @@ export interface TimelinePoint {
   flagged: number;
 }
 
+export interface CustomerBreakdown {
+  total_customers: number;
+  flagged_customers: number;
+  customers_over_ctr: number;
+  customers_in_ctr_band: number;
+  high_risk_geo_customers: number;
+  avg_txns_per_customer: number;
+  transaction_bands: {
+    above_ctr: number;
+    ctr_band: number;
+    below_band: number;
+  };
+  by_segment: Record<string, number>;
+  by_kyc: Record<string, number>;
+  flagged_by_segment: Record<string, number>;
+  ctr_threshold: number;
+}
+
 export interface AlertRow {
   customer_id: number;
   risk_score: number;

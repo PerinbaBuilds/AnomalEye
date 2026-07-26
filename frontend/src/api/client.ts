@@ -1,6 +1,7 @@
 import type {
   AgentResult,
   AlertsResponse,
+  CustomerBreakdown,
   CustomerDetail,
   Methodology,
   Network,
@@ -35,6 +36,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
 export const api = {
   overview: () => get<Overview>("/overview"),
+  breakdown: () => get<CustomerBreakdown>("/customer-breakdown"),
   timeline: (freq = "W") => get<TimelinePoint[]>(`/timeline?freq=${freq}`),
   alerts: (params: {
     level?: string;
