@@ -18,31 +18,59 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from anomaleye.agent import llm_planner
 from anomaleye.agent.planner import QueryPlan, plan_query
 from anomaleye.data.loader import Dataset, load_dataset
 from anomaleye.tools import anomaly, eda, explain, features, risk
 
 
 class Agent:
-    """Query-driven AML analysis agent."""
+    """Query-driven AML analysis agent.
 
-    def __init__(self, dataset: Optional[Dataset] = None, top_n: int = 10):
+    Planning is done by the LLM (real tool-calling) when an API key is
+    configured, and by the deterministic rule-based planner otherwise — or
+    whenever the LLM call fails. Either way, all *detection* is deterministic.
+    """
+
+    def __init__(
+        self,
+        dataset: Optional[Dataset] = None,
+        top_n: int = 10,
+        use_llm: Optional[bool] = None,
+    ):
         self.dataset = dataset or load_dataset()
         self.top_n = top_n
         # Relative dates ("last 30 days") are anchored to the newest
         # transaction in the data, so demo queries stay meaningful.
-        self._data_today = pd.to_datetime(
-            self.dataset.transactions["timestamp"]
-        ).max().to_pydatetime()
+        ts = pd.to_datetime(self.dataset.transactions["timestamp"])
+        self._data_today = ts.max().to_pydatetime()
+        self._data_start = ts.min().date().isoformat()
+        self._data_end = ts.max().date().isoformat()
+        # Auto-enable the LLM planner if a key is present, unless overridden.
+        self.use_llm = (
+            llm_planner.llm_enabled() if use_llm is None else use_llm
+        )
 
     # -- public API -------------------------------------------------------
     def run(self, query: str) -> dict[str, Any]:
         """Plan and execute ``query``; return a structured result."""
-        plan = plan_query(query, today=self._data_today)
+        plan = self._plan(query)
         return self._execute(plan)
 
     def plan_only(self, query: str) -> QueryPlan:
         """Expose the plan without executing (useful for the UI / tests)."""
+        return self._plan(query)
+
+    def _plan(self, query: str) -> QueryPlan:
+        """LLM planner when enabled, with automatic rule-based fallback."""
+        if self.use_llm:
+            try:
+                return llm_planner.plan_with_llm(
+                    query, self._data_today, self._data_start, self._data_end
+                )
+            except llm_planner.LLMUnavailable:
+                # Fall through to the deterministic planner.
+                pass
         return plan_query(query, today=self._data_today)
 
     # -- execution --------------------------------------------------------
@@ -216,6 +244,10 @@ class Agent:
                 "tools_invoked": invoked,
                 "planning_rationale": plan.rationale,
                 "transactions_in_scope": int(len(ctx.get("scope", []))),
+                "planner": plan.planner,
+                "llm_model": (
+                    llm_planner.model_name() if plan.planner == "llm" else None
+                ),
                 "run_at": datetime.now(timezone.utc).isoformat(),
             },
             "flagged_entities": flagged,
@@ -231,6 +263,18 @@ class Agent:
         }
         if "eda" in ctx:
             result["eda"] = ctx["eda"]
+
+        # Optional LLM narrative (best-effort; never blocks the result).
+        result["narrative"] = None
+        if plan.planner == "llm":
+            result["narrative"] = llm_planner.narrate(
+                plan.query,
+                {
+                    "intent": plan.intent,
+                    "counts": result["counts"],
+                    "top_flagged": flagged[:5],
+                },
+            )
         return result
 
     @staticmethod

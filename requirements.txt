@@ -6,6 +6,8 @@ scikit-learn>=1.3
 # --- REST backend (FastAPI) ---
 fastapi>=0.110
 uvicorn[standard]>=0.27
+httpx>=0.27          # LLM (Groq) calls + FastAPI TestClient
+python-dotenv>=1.0   # optional: load GROQ_API_KEY from a local .env
 
 # --- Dev / test ---
 pytest>=7.4

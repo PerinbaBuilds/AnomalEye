@@ -9,5 +9,11 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
+      # Enter your Groq key in the Render dashboard (kept secret, never in git).
+      # Leave it unset and the agent runs the deterministic rule-based planner.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: llama-3.3-70b-versatile
+      - key: LLM_BASE_URL
+        value: https://api.groq.com/openai/v1

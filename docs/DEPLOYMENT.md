@@ -27,6 +27,18 @@ Alternatively, without the blueprint: **New +** → **Web Service** → connect 
 repo → Render auto-detects the `Dockerfile` → set health check path to
 `/api/health` → **Create**.
 
+### Enabling the LLM agent on the deployed app
+
+The `render.yaml` declares `GROQ_API_KEY` as a **secret** (`sync: false`), so
+it is never in git. After the first deploy:
+
+1. Open the **anomaleye** service → **Environment**.
+2. Add `GROQ_API_KEY` = your key from <https://console.groq.com/keys>.
+3. Save — Render redeploys. The Agent Console now shows the **LLM agent** badge.
+
+Without the key the deployed app still works using the rule-based planner.
+(Same idea on Railway/Fly: add `GROQ_API_KEY` in the service's variables.)
+
 ---
 
 ## Option B — Railway (fast, generous trial)

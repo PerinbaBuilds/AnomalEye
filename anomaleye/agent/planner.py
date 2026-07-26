@@ -79,6 +79,7 @@ class QueryPlan:
     typologies: list[str] = field(default_factory=list)
     tools: list[str] = field(default_factory=list)
     rationale: list[str] = field(default_factory=list)
+    planner: str = "rules"  # "rules" or "llm"
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

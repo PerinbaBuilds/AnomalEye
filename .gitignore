@@ -21,8 +21,14 @@ htmlcov/
 .idea/
 .vscode/
 
-# Streamlit
-.streamlit/secrets.toml
+# Secrets / local env
+.env
+.env.local
+*.env
+!.env.example
+
+# Docker
+docker-compose.override.yml
 
 # Notebook checkpoints
 .ipynb_checkpoints/

@@ -65,6 +65,27 @@ necessary slice of data:
 The chosen plan is shown in every response under `tools_invoked` and
 `planning_rationale`.
 
+### LLM-powered planning (Groq) with automatic fallback
+
+The planner runs in one of two modes:
+
+- **LLM agent** — when a `GROQ_API_KEY` is set, the query is understood by an
+  LLM (Llama 3.3 on [Groq](https://groq.com), OpenAI-compatible) via **real
+  tool-calling**: the model calls a `submit_execution_plan` function to choose
+  the intent, filters, entities, typologies and tools, and writes a natural-
+  language analyst summary of the findings. This handles messy, open-ended
+  queries — *"show me anyone shuffling small cash amounts to dodge reporting"*.
+- **Rule-based** — with no key (or if the LLM call fails/times out), a
+  deterministic regex planner takes over. The app always runs, fully offline.
+
+> **The LLM never computes risk.** It only decides *what to analyse*; all
+> detection math (features, rules, Isolation Forest, scoring) stays
+> deterministic and auditable. The Agent Console shows which planner ran.
+
+**Enable it:** copy `.env.example` to `.env` and set `GROQ_API_KEY` (free key at
+<https://console.groq.com/keys>). Override `LLM_MODEL` / `LLM_BASE_URL` to point
+at any OpenAI-compatible provider.
+
 ---
 
 ## Quick start

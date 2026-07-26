@@ -121,6 +121,8 @@ export interface ExecutionSummary {
   tools_invoked: string[];
   planning_rationale: string[];
   transactions_in_scope: number;
+  planner: "llm" | "rules";
+  llm_model: string | null;
   run_at: string;
 }
 
@@ -129,6 +131,7 @@ export interface AgentResult {
   flagged_entities: AlertRow[];
   explanations: Explanation[];
   counts: { total_flagged: number; high: number; medium: number; low: number };
+  narrative?: string | null;
   eda?: {
     profile: Record<string, unknown>;
     structuring_scan: Record<string, unknown>;
