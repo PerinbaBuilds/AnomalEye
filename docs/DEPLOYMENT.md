@@ -9,43 +9,22 @@ reads the platform-provided `$PORT`, so it drops straight into any Docker host.
 
 | Platform | Free? | Card needed? | Notes |
 |---|---|---|---|
-| **Hugging Face Spaces** | ✅ permanent | ❌ no | Best for an AI demo; never sleeps. See Option B. |
-| **Koyeb** | ✅ 1 free service | ❌ no | Closest to Render; GitHub + Dockerfile. Option C. |
-| **Fly.io** | ✅ small allowance | ⚠️ yes | CLI-based; `fly.toml` included. Option D. |
-| **Render** | ✅ free web service | ❌ no | `render.yaml` included, but sleeps when idle. Option E. |
+| **Render** | ✅ free web service | ❌ no | `render.yaml` included. Sleeps when idle. **Currently deployed here.** |
+| **Fly.io** | ✅ small allowance | ⚠️ yes | CLI-based; `fly.toml` included. |
+| **Hugging Face Spaces** | ⚠️ Docker needs PRO | 💲 | Docker Spaces now require a PRO subscription. |
 
 Everything runs locally with no account at all (`docker run` or the dev
 scripts) — deployment is only needed for a public URL.
 
----
-
-## Option A — Auto-deploy to Hugging Face Spaces via GitHub Actions (recommended)
-
-The repo ships a workflow (`.github/workflows/deploy-hf.yml`) that pushes the
-app to a Hugging Face Docker Space on every commit — no deploy UI, ever. Set it
-up once:
-
-1. Free account at <https://huggingface.co>, then create a **write** token at
-   <https://huggingface.co/settings/tokens>.
-2. In the GitHub repo: **Settings → Secrets and variables → Actions → New
-   repository secret**, add:
-   - `HF_TOKEN` — the write token
-   - `HF_USERNAME` — your Hugging Face username
-   - `GROQ_API_KEY` — (optional) enables the LLM agent on the deployed app
-3. **Actions** tab → **Deploy to Hugging Face Space** → **Run workflow**
-   (or just push a commit).
-
-The workflow creates the Space, uploads the code, wires the Groq secret, and
-builds the Docker image. Live at
-`https://huggingface.co/spaces/<you>/anomaleye`. Every future `git push` to
-`main` redeploys automatically.
+The live deployment is on **Render** (Option A below). The Hugging Face manual
+route is kept for reference but note Docker Spaces are no longer free.
 
 ---
 
-## Option B — Hugging Face Spaces, manual (free forever, no card)
+## Hugging Face Spaces, manual (Docker Spaces now require PRO)
 
-Spaces run your `Dockerfile` directly and give a permanent public URL that
-doesn't sleep.
+Spaces run your `Dockerfile` directly, but as of 2026 free `cpu-basic` no longer
+hosts Docker Spaces without a PRO subscription.
 
 1. Create a free account at <https://huggingface.co>.
 2. **New** → **Space** → name it `anomaleye` → **SDK: Docker** → **Blank** →
@@ -78,18 +57,7 @@ doesn't sleep.
 
 ---
 
-## Option C — Koyeb (free service, no card, GitHub + Docker)
-
-1. Sign up at <https://www.koyeb.com> (GitHub login).
-2. **Create Web Service** → **GitHub** → pick `PerinbaBuilds/AnomalEye`.
-3. Koyeb auto-detects the `Dockerfile`. Set the port to **8000** and health
-   check path to `/api/health`.
-4. Under **Environment variables**, add `GROQ_API_KEY` (optional, for the LLM).
-5. **Deploy** → live at `https://anomaleye-<you>.koyeb.app`.
-
----
-
-## Option D — Fly.io (CLI)
+## Option B — Fly.io (CLI)
 
 ```bash
 curl -L https://fly.io/install.sh | sh   # one-time
@@ -103,7 +71,7 @@ The included `fly.toml` sets `internal_port = 8000` and 1 GB RAM.
 
 ---
 
-## Option E — Render (blueprint included)
+## Option A — Render (recommended · currently live)
 
 The repo ships a `render.yaml` blueprint, so this is a few clicks:
 
@@ -136,7 +104,7 @@ Without the key the deployed app still works using the rule-based planner.
 
 ---
 
-## Option F — Railway (fast, generous trial)
+## Option C — Railway (fast, generous trial)
 
 1. <https://railway.app> → **New Project** → **Deploy from GitHub repo**.
 2. Pick `AnomalEye`. Railway detects the `Dockerfile` and builds it.

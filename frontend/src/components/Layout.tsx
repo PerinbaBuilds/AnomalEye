@@ -63,7 +63,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         <div className="border-t border-line px-5 py-4 text-[11px] leading-relaxed text-muted">
           <p className="font-semibold text-slate-400">Compliance-grade</p>
-          <p>Explainable · Auditable · Offline</p>
+          <p>Explainable · Auditable · Deterministic</p>
         </div>
       </aside>
 
