@@ -1,0 +1,33 @@
+name: Deploy to Hugging Face Space
+
+# Auto-deploys the app to a Hugging Face Docker Space on every push to main.
+# One-time setup (repo → Settings → Secrets and variables → Actions):
+#   HF_TOKEN      — a Hugging Face write token (https://huggingface.co/settings/tokens)
+#   HF_USERNAME   — your Hugging Face username
+#   GROQ_API_KEY  — (optional) enables the LLM agent on the deployed Space
+# Until HF_TOKEN/HF_USERNAME exist the job is a harmless no-op.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hugging Face Hub
+        run: pip install "huggingface_hub>=0.24"
+
+      - name: Deploy to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python .github/scripts/deploy_hf.py

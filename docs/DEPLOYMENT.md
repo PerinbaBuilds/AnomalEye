@@ -19,7 +19,30 @@ scripts) — deployment is only needed for a public URL.
 
 ---
 
-## Option B — Hugging Face Spaces (free forever, no card, great for AI demos)
+## Option A — Auto-deploy to Hugging Face Spaces via GitHub Actions (recommended)
+
+The repo ships a workflow (`.github/workflows/deploy-hf.yml`) that pushes the
+app to a Hugging Face Docker Space on every commit — no deploy UI, ever. Set it
+up once:
+
+1. Free account at <https://huggingface.co>, then create a **write** token at
+   <https://huggingface.co/settings/tokens>.
+2. In the GitHub repo: **Settings → Secrets and variables → Actions → New
+   repository secret**, add:
+   - `HF_TOKEN` — the write token
+   - `HF_USERNAME` — your Hugging Face username
+   - `GROQ_API_KEY` — (optional) enables the LLM agent on the deployed app
+3. **Actions** tab → **Deploy to Hugging Face Space** → **Run workflow**
+   (or just push a commit).
+
+The workflow creates the Space, uploads the code, wires the Groq secret, and
+builds the Docker image. Live at
+`https://huggingface.co/spaces/<you>/anomaleye`. Every future `git push` to
+`main` redeploys automatically.
+
+---
+
+## Option B — Hugging Face Spaces, manual (free forever, no card)
 
 Spaces run your `Dockerfile` directly and give a permanent public URL that
 doesn't sleep.
