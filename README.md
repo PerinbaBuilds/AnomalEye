@@ -6,15 +6,15 @@ every decision.**
 
 > **Live demo:** [anomaleye.onrender.com](https://anomaleye.onrender.com) &nbsp;·&nbsp; _free-tier host — first request may take ~50s to wake_
 
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
-![pandas](https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)
-![Groq LLM](https://img.shields.io/badge/Groq_LLM-F55036?style=for-the-badge)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
+![Python](https://img.shields.io/badge/Python-2b3138?style=for-the-badge&logo=python&logoColor=3776AB)
+![FastAPI](https://img.shields.io/badge/FastAPI-2b3138?style=for-the-badge&logo=fastapi&logoColor=009688)
+![NumPy](https://img.shields.io/badge/NumPy-2b3138?style=for-the-badge&logo=numpy&logoColor=4DABCF)
+![pandas](https://img.shields.io/badge/pandas-2b3138?style=for-the-badge&logo=pandas&logoColor=E70488)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-2b3138?style=for-the-badge&logo=scikitlearn&logoColor=F7931E)
+![Groq LLM](https://img.shields.io/badge/Groq_LLM-2b3138?style=for-the-badge&logoColor=white)
+![React](https://img.shields.io/badge/React-2b3138?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Docker](https://img.shields.io/badge/Docker-2b3138?style=for-the-badge&logo=docker&logoColor=2496ED)
+![Render](https://img.shields.io/badge/Render-2b3138?style=for-the-badge&logo=render&logoColor=46E3B7)
 
 ---
 
