@@ -6,15 +6,15 @@ every decision.**
 
 > **Live demo:** [anomaleye.onrender.com](https://anomaleye.onrender.com) &nbsp;·&nbsp; _free-tier host — first request may take ~50s to wake_
 
-![Python](https://img.shields.io/badge/Python-2b3138?style=for-the-badge&logo=python&logoColor=3776AB)
-![FastAPI](https://img.shields.io/badge/FastAPI-2b3138?style=for-the-badge&logo=fastapi&logoColor=009688)
-![NumPy](https://img.shields.io/badge/NumPy-2b3138?style=for-the-badge&logo=numpy&logoColor=4DABCF)
-![pandas](https://img.shields.io/badge/pandas-2b3138?style=for-the-badge&logo=pandas&logoColor=E70488)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-2b3138?style=for-the-badge&logo=scikitlearn&logoColor=F7931E)
-![Groq LLM](https://img.shields.io/badge/Groq_LLM-2b3138?style=for-the-badge&logoColor=white)
-![React](https://img.shields.io/badge/React-2b3138?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Docker](https://img.shields.io/badge/Docker-2b3138?style=for-the-badge&logo=docker&logoColor=2496ED)
-![Render](https://img.shields.io/badge/Render-2b3138?style=for-the-badge&logo=render&logoColor=46E3B7)
+![Python](https://img.shields.io/badge/Python-1c2128?style=for-the-badge&logo=python&logoColor=3776AB)
+![FastAPI](https://img.shields.io/badge/FastAPI-1c2128?style=for-the-badge&logo=fastapi&logoColor=009688)
+![NumPy](https://img.shields.io/badge/NumPy-1c2128?style=for-the-badge&logo=numpy&logoColor=4DABCF)
+![pandas](https://img.shields.io/badge/pandas-1c2128?style=for-the-badge&logo=pandas&logoColor=E70488)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1c2128?style=for-the-badge&logo=scikitlearn&logoColor=F7931E)
+![Groq LLM](https://img.shields.io/badge/Groq_LLM-1c2128?style=for-the-badge&logoColor=white)
+![React](https://img.shields.io/badge/React-1c2128?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Docker](https://img.shields.io/badge/Docker-1c2128?style=for-the-badge&logo=docker&logoColor=2496ED)
+![Render](https://img.shields.io/badge/Render-1c2128?style=for-the-badge&logo=render&logoColor=46E3B7)
 
 ---
 
