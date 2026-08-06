@@ -1,238 +1,155 @@
-# 👁 AnomalEye — Agentic AI for AML Suspicious-Activity Detection
+# 👁 AnomalEye
 
-AnomalEye is a **full-stack, compliance-grade AML platform**. At its core is an
-**autonomous agent**: you give it an instruction in plain English — *"Find
-structuring patterns in the last 30 days"* — and it **parses the intent, builds
-a dynamic execution plan, invokes only the tools that query needs**, detects
-laundering typologies, scores risk, and returns an **explainable** verdict with a
-recommended escalation action (`monitor` / `review` / `report`).
+Ask *"which customers are laundering money?"* in plain English, and it runs the
+investigation — flagging suspicious accounts, scoring the risk, and explaining
+every decision.
 
-It ships as a **React + TypeScript** analyst console on top of a **FastAPI**
-service that exposes a hybrid **rules + statistics + machine-learning** detection
-engine — every decision auditable, every threshold explicit.
-
-> Built to attack the real problem: rule-based AML systems drown analysts in
-> false positives while sophisticated schemes (structuring, smurfing, layering,
-> rapid cash-out) slip through.
+[![CI](https://github.com/PerinbaBuilds/AnomalEye/actions/workflows/ci.yml/badge.svg)](https://github.com/PerinbaBuilds/AnomalEye/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-e60028.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-anomaleye.onrender.com-3b82f6.svg)](https://anomaleye.onrender.com)
 
 ---
 
-## What's inside
+## Why this exists
+
+Traditional anti-money-laundering systems bury analysts in false positives while
+genuinely sophisticated schemes slip past fixed rules. I wanted to find out
+whether a language model could *drive* the investigation — deciding what to check
+from a plain-English question — while the actual detection stays deterministic,
+so every flagged account is reproducible and defensible to a regulator.
+
+## How It Works
+
+You type an instruction. An LLM agent parses it, builds an execution plan by
+**calling a planning function**, and runs only the tools that specific question
+needs — nothing more.
 
 ```
-┌──────────────────────────── Frontend (React + TS + Vite + Tailwind) ────────────────────────────┐
-│  Dashboard · AI Agent Console · Alert Queue · Live Monitor · Link Analysis · Performance · Docs   │
-└───────────────────────────────────────────────┬──────────────────────────────────────────────────┘
-                                                 │  REST / SSE
-┌───────────────────────────────────────────────▼──────────────────────────────────────────────────┐
-│  Backend (FastAPI)   /api/overview · /api/agent/query · /api/alerts · /api/customers/{id} ...      │
-└───────────────────────────────────────────────┬──────────────────────────────────────────────────┘
-                                                 │
-┌───────────────────────────────────────────────▼──────────────────────────────────────────────────┐
-│  Engine (Python)   Agent(planner + orchestrator)  →  EDA · Features · Anomaly · Risk · Explain     │
-└────────────────────────────────────────────────────────────────────────────────────────────────────┘
+"Find structuring in the last 30 days"
+        │
+        ▼
+  LLM planner ──► plan: {intent, filters, typologies, tools}
+        │            (falls back to a rule-based parser with no API key)
+        ▼
+  filter ─► features ─► detect (rules + Isolation Forest) ─► risk score ─► explain
+        │
+        ▼
+  Flagged customers · risk band · escalation (monitor / review / report) · reasons
 ```
 
-### Six analyst views
+The key decision: **the LLM decides *what* to analyse, never *what the answer
+is*.** All detection math — feature engineering, typology rules, the anomaly
+model, the risk score — is deterministic and auditable. The model can pick the
+tools, but it can't invent a number.
 
-| View | What it does |
-|---|---|
-| **Dashboard** | Portfolio KPIs, risk distribution, typology breakdown, CTR-band histogram, flagged-activity trend, priority cases |
-| **AI Agent Console** | The hero: type a query → see the agent's detected intent, filters, **tool pipeline**, planning rationale, and explained findings |
-| **Alert Queue** | Case triage — filter by risk band / action / typology, paginate, drill into any entity |
-| **Live Monitor** | Real-time transaction blotter scored on the fly over **Server-Sent Events** |
-| **Link Analysis** | Counterparty network graphs (funnel = smurfing, chain = layering) + discovered layering chains |
-| **Entity 360** | Per-customer risk gauge, plain-English explanation, evidence, network, full transaction history |
-| **Model Performance** | Precision / recall / F1 and per-typology recall vs injected ground truth |
-| **Methodology** | Every rule, weight and threshold — the auditable rulebook |
+## Features
 
----
+- **Ask in plain English** — the agent reads your intent and decides which
+  analyses to run, instead of following a fixed pipeline.
+- **Detects the classic laundering typologies** — structuring, smurfing,
+  layering, and rapid cash-out.
+- **Scores every customer** low / medium / high and recommends an action:
+  monitor, review, or file a report.
+- **Explains each flag** with the exact figures that triggered it — no black box.
+- **Live transaction monitor** and **counterparty link-analysis** graphs for
+  spotting funnels and chains.
+- **Runs with or without an LLM key** — the deterministic rule engine is the
+  automatic fallback.
 
-## Why it's an *agent*, not a pipeline
+## Tech Stack
 
-The agent reads the query, extracts intent / filters / entities / typology, and
-**constructs a plan on the fly** — running only the necessary tools on the
-necessary slice of data:
+| Layer | Choice | Why |
+|---|---|---|
+| Backend | FastAPI | Serves the API *and* the built UI from one process; async streaming for the live feed. |
+| Detection | scikit-learn + pandas | Isolation Forest + rule detectors kept deterministic so results are auditable. |
+| LLM planner | Groq (Llama 3.3), OpenAI-compatible tool-calling | Free, fast inference; used only to plan, never to compute. Swappable via env vars. |
+| Frontend | React + TypeScript + Vite | — |
+| Charts | Recharts + hand-rolled SVG | The counterparty graph is custom SVG — clearer than a physics blob for funnel/chain shapes. |
+| Deploy | Docker (single image) → Render | One container builds the UI and runs the API. |
 
-| User query | What the agent decides to do |
-|---|---|
-| `Analyse this dataset for suspicious activity` | Full pipeline: EDA → features → hybrid detection (rules + ML) → risk → explain |
-| `Find structuring patterns in the last 30 days` | Apply 30-day filter → run **only** the structuring detector → skip EDA & ML |
-| `Which customers made 10+ transactions under $10,000?` | Pure aggregation rule; **no ML** |
-| `Is customer ID 1528 suspicious?` | Single-entity lookup; risk computed on-demand for **that customer only** |
-| `Flag high-risk customers` | Full hybrid suite, return **only** the high-risk band |
+## Architecture
 
-The chosen plan is shown in every response under `tools_invoked` and
-`planning_rationale`.
+```
+ Browser (React SPA)
+        │  REST + Server-Sent Events
+        ▼
+ FastAPI  ──► AnalysisService (runs one full detection pass at startup, cached)
+        │            │
+        │            ▼
+        │      Agent ──► Planner (LLM tool-call ─┐  or  rule-based fallback)
+        │                                        │
+        ▼                                        ▼
+   /api/*  tools:  EDA · Features · Anomaly (rules + Isolation Forest) · Risk · Explain
+```
 
-### LLM-powered planning (Groq) with automatic fallback
+- **AnalysisService**: runs detection once on boot and caches it, so the
+  dashboard, alerts, and broad agent queries are instant.
+- **Agent**: turns a query into a plan and executes only the needed tools.
+- **Tools**: small, single-responsibility units the agent composes in any order.
 
-The planner runs in one of two modes:
+One interesting trade-off: the agent **caches the full-dataset analysis** and
+reuses it for any query over the whole portfolio, dropping a broad request from
+~5 s to ~0.02 s — but a *filtered* query recomputes on its smaller slice, so
+scoped questions stay correct rather than served from a stale cache.
 
-- **LLM agent** — when a `GROQ_API_KEY` is set, the query is understood by an
-  LLM (Llama 3.3 on [Groq](https://groq.com), OpenAI-compatible) via **real
-  tool-calling**: the model calls a `submit_execution_plan` function to choose
-  the intent, filters, entities, typologies and tools, and writes a natural-
-  language analyst summary of the findings. This handles messy, open-ended
-  queries — *"show me anyone shuffling small cash amounts to dodge reporting"*.
-- **Rule-based** — with no key (or if the LLM call fails/times out), a
-  deterministic regex planner takes over. The app always runs, fully offline.
+A deeper write-up lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-> **The LLM never computes risk.** It only decides *what to analyse*; all
-> detection math (features, rules, Isolation Forest, scoring) stays
-> deterministic and auditable. The Agent Console shows which planner ran.
-
-**Enable it:** copy `.env.example` to `.env` and set `GROQ_API_KEY` (free key at
-<https://console.groq.com/keys>). Override `LLM_MODEL` / `LLM_BASE_URL` to point
-at any OpenAI-compatible provider.
-
----
-
-## Quick start
-
-**Prerequisites:** Python 3.10+ and Node 18+.
-
-### One command (production build + serve)
+## Getting Started
 
 ```bash
-# Windows
-scripts\start.bat
+git clone https://github.com/PerinbaBuilds/AnomalEye
+cd AnomalEye
+cp .env.example .env          # add your free Groq key (optional — see below)
 
-# macOS / Linux
-./scripts/start.sh
-```
-
-This installs deps, builds the React app, and serves the whole product (UI +
-API) from FastAPI at **http://localhost:8000**.
-
-### Development (hot reload)
-
-```bash
-# Windows
-scripts\dev.bat
-
-# macOS / Linux
-./scripts/dev.sh
-```
-
-Backend on `:8000`, Vite dev server with hot reload on **http://localhost:5173**
-(it proxies `/api` to the backend).
-
-### Manual
-
-```bash
-pip install -r requirements.txt          # Python deps
-python -m anomaleye.data.generate        # (optional) regenerate the dataset
-
+pip install -r requirements.txt
 cd frontend && npm install && npm run build && cd ..
+
 python -m uvicorn backend.main:app --port 8000   # open http://localhost:8000
 ```
 
-### Deploy
+**Requirements:** Python 3.10+, Node 18+.
 
-The whole app (API + UI) runs from the single root `Dockerfile`. A `render.yaml`
-blueprint is included for one-click deploys:
+**Windows:** `scripts\start.bat` does all of the above in one command;
+`scripts\dev.bat` runs it with hot reload.
 
-```bash
-docker build -t anomaleye . && docker run -p 8000:8000 anomaleye   # local
-```
+**The Groq key is optional.** Without it, the agent uses the deterministic
+rule-based planner and everything still works offline. With it (free at
+<https://console.groq.com/keys>), the Agent Console understands open-ended
+queries and writes a natural-language summary.
 
-For Render / Railway / Fly.io steps, see **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+## Usage
 
-### CLI (no UI needed)
-
-```bash
-python -m anomaleye "Analyse this dataset for suspicious activity"
-python -m anomaleye --demo            # run all example queries
-python -m anomaleye.evaluate          # detection quality metrics
-```
-
----
-
-## Detection methodology (hybrid)
-
-**Rule + statistical typology detectors** (each emits structured *evidence*):
-
-- **Structuring** — ≥3 cash transactions in `$9,000–$9,999` within 30 days.
-- **Smurfing** — ≥6 distinct small senders aggregating above `$10,000` in 7 days.
-- **Rapid cash-out** — a large credit ≥80% drained within 72h.
-- **Layering** — value through ≥3 accounts in ≤48h; every account flagged.
-- **Velocity spike** — 24h burst ≥3σ over the population.
-- **High-risk geography** — FATF-flagged jurisdiction exposure (amplifier).
-
-**Machine learning:** an unsupervised **Isolation Forest** over a 13-dimensional
-per-customer behavioural fingerprint.
-
-**Risk score:** an auditable weighted blend of the strongest signal per type,
-capped at 100, mapped to `low < 40 ≤ medium < 70 ≤ high`. All weights and
-thresholds live in `anomaleye/config.py`.
-
-### Measured performance (`python -m anomaleye.evaluate`)
-
-| Metric (customer-level, ≥ medium risk) | Value |
-|---|---|
-| Precision | **0.77** |
-| Recall | **0.91** |
-| F1 | **0.84** |
-
-Per-typology recall: structuring **1.0**, smurfing **1.0**, rapid cash-out
-**1.0**, layering **0.8**.
-
----
-
-## API reference (selected)
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET`  | `/api/overview` | Dashboard KPIs, distributions, histogram |
-| `POST` | `/api/agent/query` | Run a natural-language agent query |
-| `GET`  | `/api/alerts?level=&typology=&escalation=` | Filtered alert queue |
-| `GET`  | `/api/customers/{id}` | Entity 360 (profile, assessment, timeline, network) |
-| `GET`  | `/api/customers/{id}/network` | Counterparty link graph |
-| `GET`  | `/api/layering-chains` | Discovered layering paths |
-| `GET`  | `/api/performance` | Precision/recall vs ground truth |
-| `GET`  | `/api/methodology` | Thresholds, weights, risk bands |
-| `GET`  | `/api/stream/transactions` | SSE live scoring feed |
-
-Interactive docs at **http://localhost:8000/docs** when the server is running.
-
----
-
-## Project layout
-
-```
-anomaleye/            # detection engine (importable, tested)
-  config.py           # all thresholds & weights (single source of truth)
-  agent/              # planner (NL→plan) + orchestrator (dynamic execution)
-  tools/              # eda · features · anomaly · risk · explain · network
-  data/               # synthetic generator + loader
-  cli.py  evaluate.py
-backend/              # FastAPI app + cached analysis service
-frontend/             # React + TS + Vite + Tailwind console
-  src/pages/          # Dashboard, AgentConsole, Alerts, Entity360, ...
-  src/components/     # Layout, NetworkGraph, ScoreGauge, ui primitives
-scripts/              # start / dev launchers (Windows + Unix)
-tests/                # 36 tests: planner, detectors, agent, API, eval gate
-```
-
----
-
-## Tests
+Ask the agent from the command line:
 
 ```bash
-python -m pytest                 # 36 backend/engine tests
-cd frontend && npm run typecheck # frontend type safety
+python -m anomaleye "Find structuring patterns in the last 30 days"
+python -m anomaleye "Is customer ID 1528 suspicious?"
+python -m anomaleye --demo          # run all the example queries
 ```
 
----
+Or open the web app and type in the **AI Agent Console**. Measure detection
+quality against the injected ground truth:
 
-## Design principles
+```bash
+python -m anomaleye.evaluate         # precision / recall / F1
+python -m pytest                     # 41 tests
+```
 
-- **Explainable by construction** — every flag quotes the exact numbers that
-  triggered it; the risk score breaks down by signal.
-- **Auditable** — all business logic in `config.py`, surfaced in the Methodology
-  view.
-- **Deterministic & offline** — no external API key; the same query always
-  yields the same plan and verdict.
-- **Ground-truth honest** — the generator labels its injected schemes, so
-  detection quality is measured, not asserted.
+## Known Limitations / What I'd Do Differently
+
+- **The dataset is synthetic** — generated with deliberately injected laundering
+  typologies (labelled for evaluation), not real transactions.
+- **No authentication** — the hosted demo is fully public; I'd add auth and
+  per-analyst case ownership before anything real.
+- **Risk weights are hand-tuned** in `config.py`, not learned from labelled
+  data. A supervised layer on top would likely beat the fixed weights.
+- **The LLM only plans.** If Groq is unreachable it silently falls back to
+  rules — great for reliability, but the "agentic" feel needs the key.
+- **No frontend test coverage yet** — the backend has 41 tests; the React app
+  is only type-checked.
+- **Free Render instances sleep** after ~15 min idle, so the first request
+  cold-starts (~30 s). Not a bug, just the free tier.
+
+## License
+
+[MIT](LICENSE) © Perinba Athiban
