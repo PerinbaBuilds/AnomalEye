@@ -1,12 +1,20 @@
-# 👁 AnomalEye
+# 👁 AnomalEye &nbsp;[![CI](https://github.com/PerinbaBuilds/AnomalEye/actions/workflows/ci.yml/badge.svg)](https://github.com/PerinbaBuilds/AnomalEye/actions/workflows/ci.yml)
 
-Ask *"which customers are laundering money?"* in plain English, and it runs the
+**Ask _"which customers are laundering money?"_ in plain English, and it runs the
 investigation — flagging suspicious accounts, scoring the risk, and explaining
-every decision.
+every decision.**
 
-[![CI](https://github.com/PerinbaBuilds/AnomalEye/actions/workflows/ci.yml/badge.svg)](https://github.com/PerinbaBuilds/AnomalEye/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-e60028.svg)](LICENSE)
-[![Live demo](https://img.shields.io/badge/demo-anomaleye.onrender.com-3b82f6.svg)](https://anomaleye.onrender.com)
+> **Live demo:** [anomaleye.onrender.com](https://anomaleye.onrender.com) &nbsp;·&nbsp; _free-tier host — first request may take ~50s to wake_
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
+![pandas](https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)
+![Groq LLM](https://img.shields.io/badge/Groq_LLM-F55036?style=for-the-badge)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
 
 ---
 
